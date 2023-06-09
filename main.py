@@ -18,7 +18,7 @@ transform = A.Compose([
 ])
 
 num_epochs = 100
-batch_size = 16
+batch_size = 32
 learning_rate = 0.005
 
 bad_train = BoneAgeDataset(annotations_file=os.path.join('data', 'rsna-bone-age', 'training', 'train_df.csv'),
@@ -66,18 +66,18 @@ for epoch in range(num_epochs):
 
     # Validation
     with torch.no_grad():
-        correct = 0
-        total = 0
         for scans in valid_dataloader:
             images = scans['image'].to(torch.float32).to(device)
             labels = scans['boneage'].to(torch.float32).to(device)
+            labels = torch.unsqueeze(labels, dim=1)
 
             with torch.no_grad():
                 outputs = model(images)
-                val_loss = criterion(outputs, labels)
+                val_loss = torch.sqrt(criterion(outputs, labels))
             del images, labels, outputs
 
-        print('Accuracy of the network on the {} validation images: {} %'.format(total, val_loss))
+        print('Accuracy of the network on the {} validation images: {} %'.format(len(valid_dataloader) * batch_size,
+                                                                                 val_loss))
 
     if epoch % 10 == 0:
         torch.save(model.state_dict(), 'output/model_vgg16_{}.ckpt'.format(epoch))
