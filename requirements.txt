@@ -1,0 +1,11 @@
+numpy
+pandas
+matplotlib
+scikit-image
+torch
+albumentations
+torchvision
+opencv-python
+tqdm
+lightning
+tensorboard
