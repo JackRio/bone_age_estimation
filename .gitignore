@@ -1,3 +1,8 @@
+# Custom ignore folders
+data/
+output/
+.idea/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
