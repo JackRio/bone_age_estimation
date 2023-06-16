@@ -2,6 +2,7 @@ import pytorch_lightning as L
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
+import wandb
 import torchvision.models as models
 
 
@@ -17,6 +18,7 @@ class ResNet(L.LightningModule):
     def __init__(self, resent_version, pretrained, lr):
         super().__init__()
         self.save_hyperparameters()
+        print(f"Using {resent_version} model")
         self.model = self.version[resent_version](pretrained=pretrained)
 
         linear_in_features = list(self.model.children())[-1].in_features
@@ -38,6 +40,7 @@ class ResNet(L.LightningModule):
 
         self.log("%s_loss" % mode, loss, prog_bar=True)
         self.log("%s_acc" % mode, loss, prog_bar=True)
+        wandb.log({"%s/loss" % mode: loss})
         return loss
 
     def training_step(self, batch, batch_idx):
@@ -45,7 +48,7 @@ class ResNet(L.LightningModule):
         return loss
 
     def validation_step(self, batch, batch_idx):
-        self._calculate_loss(batch, mode="val")
+        loss = self._calculate_loss(batch, mode="val")
 
     def test_step(self, batch, batch_idx):
         self._calculate_loss(batch, mode="test")

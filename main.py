@@ -40,7 +40,8 @@ def train_model(tc):
     with open("data/wandb.json", "r") as f:
         wandb_config = json.load(f)
     wandb.login(key=wandb_config["wandb_api_key"], relogin=True)
-    wandb.init(project=wandb_config["wandb_project"], entity=wandb_config["wandb_entity"], config=tc)
+    wandb.init(project=wandb_config["wandb_project"], entity=wandb_config["wandb_entity"], config=tc,
+               name=tc["run_name"])
     wandb_logger = WandbLogger()
 
     trainer = L.Trainer(
@@ -52,7 +53,7 @@ def train_model(tc):
         logger=wandb_logger,
         callbacks=[
             ModelCheckpoint(
-                save_weights_only=True, mode="max", monitor="val_acc"
+                save_weights_only=True, mode="min", monitor="val_acc", every_n_epochs=5
             ),
             LearningRateMonitor("epoch"),
         ],
@@ -69,10 +70,10 @@ def train_model(tc):
 
         # TODO: Change this class name to load the appropriate model
         model = ResNet(resent_version=tc["model_name"], pretrained=True, lr=tc['learning_rate'])
-        trainer.fit(model, train_loader, val_loader)
-        model = ResNet.load_from_checkpoint(
-            trainer.checkpoint_callback.best_model_path
-        )
+    trainer.fit(model, train_loader, val_loader)
+    model = ResNet.load_from_checkpoint(
+        trainer.checkpoint_callback.best_model_path
+    )
 
     val_result = trainer.test(model, dataloaders=val_loader, verbose=False)
     result = {

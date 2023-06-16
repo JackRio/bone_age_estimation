@@ -1,5 +1,6 @@
 # parameters
 precision: '16-mixed'
+run_name: "resnet50_32bs_50e_16mp"
 
 # Dataloader
 train_df: "data/rsna-bone-age/training/train_df.csv"
@@ -7,10 +8,10 @@ valid_df: "data/rsna-bone-age/training/valid_df.csv"
 
 # Training parameters
 num_epochs: 50
-batch_size: 64
+batch_size: 32
 learning_rate: 0.0005
 
 # Model
-model_name: "resnet18"
+model_name: "resnet50"
 checkpoint_path: "output"
-pretrained_filename: "data/pretrained_weights/resnet18.pth"
+pretrained_filename: "output/resnet50.ckpt"
