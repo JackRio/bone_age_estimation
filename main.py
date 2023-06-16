@@ -17,14 +17,16 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print("Using {} device".format(device))
 # Define the transformations
 transform = A.Compose([
-    A.Resize(width=450, height=450),
-    A.CenterCrop(width=256, height=256),
+    # TODO: Check which size is better for cropping
+    A.Resize(width=1024, height=1024),
+    A.CenterCrop(width=640, height=640),
+    A.CLAHE(),
     A.Normalize(),
     ToTensorV2(),
 ])
 
 num_epochs = 50
-batch_size = 16
+batch_size = 4
 learning_rate = 0.0005
 
 # Load the data
@@ -32,7 +34,7 @@ raw_train_df = pd.read_csv(C.TRAIN_CSV)
 valid_df = pd.read_csv(C.VALID_CSV)
 
 bad_train = BoneAgeDataset(annotations_file=raw_train_df, transform=transform)
-train_dataloader = DataLoader(bad_train, batch_size=batch_size, shuffle=True, num_workers=0)
+train_dataloader = DataLoader(bad_train, batch_size=batch_size, shuffle=True, num_workers=16)
 
 bad_valid = BoneAgeDataset(annotations_file=valid_df, transform=transform)
 valid_dataloader = DataLoader(bad_valid, batch_size=batch_size, shuffle=False, num_workers=0)

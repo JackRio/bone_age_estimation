@@ -31,22 +31,25 @@ class BoneAgeDataset(Dataset):
 
 if __name__ == "__main__":
     import albumentations as A
+    from albumentations.pytorch import ToTensorV2
 
     augmentations = A.Compose([
-        A.Resize(width=450, height=450),
-        A.CenterCrop(width=350, height=350),
-        A.RandomBrightnessContrast(brightness_limit=0.2, contrast_limit=0.2, p=0.5)
+        # TODO: Check which size is better for cropping
+        A.Resize(width=1024, height=1024),
+        A.CenterCrop(width=768, height=768),
+        A.CLAHE(),
+        A.Normalize(),
+        ToTensorV2(),
     ])
 
     bad_train = BoneAgeDataset(
         annotations_file=pd.read_csv(os.path.join('data', 'rsna-bone-age', 'training', 'train_df.csv')),
         transform=augmentations)
 
-    dataloader = DataLoader(bad_train, batch_size=16, shuffle=True, num_workers=0)
-    print(len(dataloader))
+    dataloader = DataLoader(bad_train, batch_size=16, shuffle=False, num_workers=0)
     for i_batch, sample_batched in enumerate(dataloader):
         # plot an image from the batch
         print(sample_batched['image'][0].size())
-        plt.imshow(sample_batched['image'][0])
+        plt.imshow(sample_batched['image'][0].permute(1, 2, 0))
         plt.show()
         break
