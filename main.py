@@ -45,6 +45,7 @@ def train_model(tc):
 
     trainer = L.Trainer(
         default_root_dir=os.path.join(tc["checkpoint_path"], tc["model_name"]),  # Where to save models
+        precision=tc["precision"],
         accelerator="auto",
         devices=1,
         max_epochs=tc["num_epochs"],
