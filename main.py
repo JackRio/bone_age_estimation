@@ -4,85 +4,89 @@ import albumentations as A
 import pandas as pd
 import pytorch_lightning as L
 import torch
-import torch.nn as nn
+import json
+import wandb
+import yaml
 from albumentations.pytorch import ToTensorV2
 from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint
 from torch.utils.data import DataLoader
 
 from config import constants as C
 from dataloader import BoneAgeDataset
-from models.swin_b import SwinB
+from models.resnet import ResNet
+from pytorch_lightning.loggers import WandbLogger
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print("Using {} device".format(device))
-# Define the transformations
+
 transform = A.Compose([
-    A.Resize(width=450, height=450),
-    A.CenterCrop(width=256, height=256),
+    A.Resize(width=512, height=512),
+    A.CLAHE(),
     A.Normalize(),
     ToTensorV2(),
 ])
 
-num_epochs = 50
-batch_size = 16
-learning_rate = 0.0005
 
-# Load the data
-raw_train_df = pd.read_csv(C.TRAIN_CSV)
-valid_df = pd.read_csv(C.VALID_CSV)
+def train_model(tc):
+    raw_train_df = pd.read_csv(tc["train_df"])
+    valid_df = pd.read_csv(tc["valid_df"])
 
-bad_train = BoneAgeDataset(annotations_file=raw_train_df, transform=transform)
-train_dataloader = DataLoader(bad_train, batch_size=batch_size, shuffle=True, num_workers=0)
+    bad_train = BoneAgeDataset(annotations_file=raw_train_df, transform=transform)
+    train_loader = DataLoader(bad_train, batch_size=tc["batch_size"], shuffle=True, num_workers=0)
 
-bad_valid = BoneAgeDataset(annotations_file=valid_df, transform=transform)
-valid_dataloader = DataLoader(bad_valid, batch_size=batch_size, shuffle=False, num_workers=0)
+    bad_valid = BoneAgeDataset(annotations_file=valid_df, transform=transform)
+    val_loader = DataLoader(bad_valid, batch_size=tc["batch_size"], shuffle=False, num_workers=0)
 
+    with open("data/wandb.json", "r") as f:
+        wandb_config = json.load(f)
+    wandb.login(key=wandb_config["wandb_api_key"], relogin=True)
+    wandb.init(project=wandb_config["wandb_project"], entity=wandb_config["wandb_entity"], config=tc)
+    wandb_logger = WandbLogger()
 
-def train_model(**kwargs):
     trainer = L.Trainer(
-        default_root_dir=os.path.join(C.CHECKPOINT_PATH, "SwinB"),
+        default_root_dir=os.path.join(tc["checkpoint_path"], tc["model_name"]),  # Where to save models
         accelerator="auto",
         devices=1,
-        max_epochs=50,
+        max_epochs=tc["num_epochs"],
+        logger=wandb_logger,
         callbacks=[
-            ModelCheckpoint(save_weights_only=True, mode="min", monitor="val_loss"),
+            ModelCheckpoint(
+                save_weights_only=True, mode="max", monitor="val_acc"
+            ),
             LearningRateMonitor("epoch"),
-        ]
-        # logger=L.loggers.TensorBoardLogger(save_dir=C.LOGS_PATH, name="swinb")
+        ],
     )
-    # trainer.logger._log_graph = True  # If True, we plot the computation graph in tensorboard
-    # trainer.logger._default_hp_metric = None  # Optional logging argument that we don't need
-    print(trainer.checkpoint_callback.best_model_path)
 
-    if os.path.isfile(C.PRETRAINED_FILENAME):
-        print("Found pretrained model at %s, loading..." % C.PRETRAINED_FILENAME)
+    # Check whether pretrained model exists. If yes, load it and skip training
+    pretrained_filename = os.path.join(tc["pretrained_filename"])
+    if os.path.isfile(pretrained_filename):
+        print(f"Found pretrained model at {pretrained_filename}, loading...")
         # Automatically loads the model with the saved hyperparameters
-        if C.PRETRAINED_FILENAME.endswith("ckpt"):
-            model = SwinB.load_from_checkpoint(C.PRETRAINED_FILENAME)
-        else:
-            model = SwinB(**kwargs)
-            model.model.load_state_dict(torch.load(C.PRETRAINED_FILENAME))
-            model.model.head = nn.Linear(in_features=1024, out_features=1)
-        if is_training:
-            trainer.fit(model, train_dataloader, valid_dataloader)
-            model = SwinB.load_state_dict(trainer.checkpoint_callback.best_model_path)
+        model = ResNet.load_from_checkpoint(pretrained_filename)
     else:
         L.seed_everything(42)  # To be reproducable
-        model = SwinB(**kwargs)
-        trainer.fit(model, train_dataloader, valid_dataloader)
-        # Load best checkpoint after training
-        model = SwinB.load_state_dict(trainer.checkpoint_callback.best_model_path)
 
-    # Test best model on validation and test set
-    val_result = trainer.test(model, dataloaders=valid_dataloader, verbose=False)
-    #     test_result = trainer.test(model, dataloaders=test_loader, verbose=False)
+        # TODO: Change this class name to load the appropriate model
+        model = ResNet(resent_version=tc["model_name"], pretrained=True, lr=tc['learning_rate'])
+        trainer.fit(model, train_loader, val_loader)
+        model = ResNet.load_from_checkpoint(
+            trainer.checkpoint_callback.best_model_path
+        )
+
+    val_result = trainer.test(model, dataloaders=val_loader, verbose=False)
     result = {
-        #         "test": test_result[0]["test_acc"],
         "val": val_result[0]["test_acc"]
     }
 
     return model, result
 
 
-is_training = True
-train_model(model_kwargs={}, lr=0.0001)
+if __name__ == "__main__":
+    # Load config file for training
+    with open(C.MODEL_TRAIN_CONFIG, 'r') as stream:
+        try:
+            train_config = yaml.safe_load(stream)
+        except yaml.YAMLError as exc:
+            print(exc)
+    final_model, final_result = train_model(train_config)
+    print(final_result)

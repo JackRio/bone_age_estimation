@@ -1,16 +1,30 @@
 import pytorch_lightning as L
+import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 import torchvision.models as models
 
 
-class SwinB(L.LightningModule):
-    def __init__(self, model_kwargs, lr):
+class ResNet(L.LightningModule):
+    version = {
+        "resnet18": models.resnet18,
+        "resnet34": models.resnet34,
+        "resnet50": models.resnet50,
+        "resnet101": models.resnet101,
+        "resnet152": models.resnet152,
+    }
+
+    def __init__(self, resent_version, pretrained, lr):
         super().__init__()
         self.save_hyperparameters()
-        self.model = models.swin_b(**model_kwargs)
+        self.model = self.version[resent_version](pretrained=pretrained)
 
-    def forward(self, x):
+        linear_in_features = list(self.model.children())[-1].in_features
+        self.model.fc = nn.Linear(linear_in_features, 1)
+
+        # TODO: Freeze the layers excpet FC
+
+    def forwards(self, x):
         return self.model(x)
 
     def configure_optimizers(self):
