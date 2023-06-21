@@ -19,21 +19,18 @@ from pytorch_lightning.loggers import WandbLogger
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print("Using {} device".format(device))
 
-transform = A.Compose([
-    A.Resize(width=512, height=512),
-    A.Flip(p=0.5),
-    A.VerticalFlip(p=0.5),
-    A.Rotate(limit=20, p=0.5),
-    A.RandomBrightnessContrast(p=0.5),
-    A.GaussianBlur(p=0.3),
-    A.GaussNoise(p=0.3),
-    A.CLAHE(),
-    A.Normalize(),
-    ToTensorV2(),
-])
-
 
 def train_model(tc):
+    transform = A.Compose([
+        A.Resize(width=tc['image_size'], height=tc['image_size']),
+        A.Flip(p=0.5),
+        A.VerticalFlip(p=0.5),
+        A.Rotate(limit=20, p=0.5),
+        A.RandomBrightnessContrast(p=0.5),
+        A.CLAHE(),
+        A.Normalize(),
+        ToTensorV2(),
+    ])
     raw_train_df = pd.read_csv(tc["train_df"])
     valid_df = pd.read_csv(tc["valid_df"])
 
@@ -72,7 +69,7 @@ def train_model(tc):
         # Automatically loads the model with the saved hyperparameters
         model = ResNet.load_from_checkpoint(pretrained_filename)
     else:
-        L.seed_everything(42)  # To be reproducable
+        L.seed_everything(44)  # To be reproducable
 
         # TODO: Change this class name to load the appropriate model
         model = ResNet(resent_version=tc["model_name"], pretrained=True, lr=tc['learning_rate'])

@@ -26,7 +26,7 @@ class ResNet(L.LightningModule):
 
         # TODO: Freeze the layers excpet FC
 
-    def forwards(self, x):
+    def forward(self, x):
         return self.model(x)
 
     def configure_optimizers(self):

@@ -1,14 +1,15 @@
 # parameters
 precision: '16-mixed'
-run_name: "resnet50_32bs_50e_16mp"
+run_name: "resnet50_preprocessed_half_data"
 
 # Dataloader
-train_df: "data/rsna-bone-age/training/train_df.csv"
-valid_df: "data/rsna-bone-age/training/valid_df.csv"
+image_size: 512
+train_df: "data/rsna-bone-age/training/train_preprocessed.csv"
+valid_df: "data/rsna-bone-age/training/valid_preprocessed.csv"
 
 # Training parameters
 num_epochs: 50
-batch_size: 8
+batch_size: 32
 learning_rate: 0.0005
 
 # Model
