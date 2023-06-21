@@ -70,7 +70,8 @@ class SAM_Segmentation:
     def generate_mask(self, image, margin=25):
         self.predictor.set_image(image)
         input_point = np.array(
-            [[image.shape[1] / 2, image.shape[0] / 2], [(image.shape[1] / 2) - 15, (image.shape[0] / 2) - 15]])
+            [[image.shape[1] / 2, image.shape[0] / 2], [(image.shape[1] / 2) - 15, (image.shape[0] / 2) - 15],
+             [(image.shape[1] / 2) + 15, (image.shape[0] / 2) + 15]])
         input_label = np.array([1, 1])
 
         masks, scores, logits = self.predictor.predict(
@@ -86,7 +87,7 @@ class SAM_Segmentation:
 
 if __name__ == "__main__":
     sam = SAM_Segmentation(sam_checkpoint="output/sam/sam_vit_h_4b8939.pth")
-    images = glob.glob("data/sam_temp/original/*.png")
+    images = glob.glob("data/rsna-bone-age/training/boneage-training-dataset/*.png")
     for image in images:
         base_name = os.path.basename(image)
         image = cv2.imread(image)
@@ -94,5 +95,5 @@ if __name__ == "__main__":
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         final_image, best_mask, fill_mask = sam.generate_mask(image)
         # save the cropped image
-        os.makedirs("data/sam_temp/sam_output", exist_ok=True)
-        cv2.imwrite(f"data/sam_temp/sam_output/{base_name}", final_image)
+        os.makedirs("data/rsna-bone-age/training/preprocessed/", exist_ok=True)
+        cv2.imwrite(f"data/rsna-bone-age/training/preprocessed/{base_name}", final_image)

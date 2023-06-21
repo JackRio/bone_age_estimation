@@ -8,7 +8,7 @@ valid_df: "data/rsna-bone-age/training/valid_df.csv"
 
 # Training parameters
 num_epochs: 50
-batch_size: 32
+batch_size: 8
 learning_rate: 0.0005
 
 # Model

@@ -21,6 +21,12 @@ print("Using {} device".format(device))
 
 transform = A.Compose([
     A.Resize(width=512, height=512),
+    A.Flip(p=0.5),
+    A.VerticalFlip(p=0.5),
+    A.Rotate(limit=20, p=0.5),
+    A.RandomBrightnessContrast(p=0.5),
+    A.GaussianBlur(p=0.3),
+    A.GaussNoise(p=0.3),
     A.CLAHE(),
     A.Normalize(),
     ToTensorV2(),
