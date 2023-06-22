@@ -1,6 +1,6 @@
 # parameters
 precision: '16-mixed'
-run_name: "inceptionv3_preprocessed_half_data"
+run_name: "resnet50_preprocessed_half_data"
 
 # Dataloader
 image_size: 512
@@ -9,10 +9,9 @@ valid_df: "data/rsna-bone-age/training/valid_preprocessed.csv"
 
 # Training parameters
 num_epochs: 50
-batch_size: 32
+batch_size: 1
 learning_rate: 0.0005
 
 # Model
-model_name: "inceptionv3"
-checkpoint_path: "output"
-pretrained_filename: "output/resnet50.ckpt"
+pretrained_filename: "lightning_logs/uh51imae/checkpoints/epoch=19-step=2620.ckpt"
+pdf_filename: "output/resnet50_preprocessed_half.pdf"
