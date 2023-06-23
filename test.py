@@ -1,17 +1,16 @@
 import os
 
 import albumentations as A
+import cv2
 import matplotlib.pyplot as plt
 import pandas as pd
 import torch
 import yaml
 from albumentations.pytorch import ToTensorV2
 from matplotlib.backends.backend_pdf import PdfPages
-from torch.utils.data import DataLoader
 
 from config import constants as C
-from dataloader import BoneAgeDataset
-from models.resnet import ResNet
+from models.model_zoo import BoneAgeEstModelZoo
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print("Using {} device".format(device))
@@ -23,17 +22,15 @@ def test_model(tc):
         A.Normalize(),
         ToTensorV2(),
     ])
-    valid_df = pd.read_csv(tc["valid_df"])
 
-    bad_valid = BoneAgeDataset(annotations_file=valid_df, transform=transform)
-    val_loader = DataLoader(bad_valid, batch_size=tc["batch_size"], shuffle=False, num_workers=0)
+    train_df = pd.read_csv(tc['train_df'])
 
     # Check whether pretrained model exists. If yes, load it and skip training
     pretrained_filename = os.path.join(tc["pretrained_filename"])
     if os.path.isfile(pretrained_filename):
         print(f"Found pretrained model at {pretrained_filename}, loading...")
         # Automatically loads the model with the saved hyperparameters
-        model = ResNet.load_from_checkpoint(pretrained_filename)
+        model = BoneAgeEstModelZoo.load_from_checkpoint(pretrained_filename)
         model.model.eval()
     else:
         print("No pretrained model found for testing")
@@ -41,24 +38,35 @@ def test_model(tc):
 
     # Create a PDF file
     with PdfPages(tc['pdf_filename']) as pdf:
-        for i, scans in enumerate(val_loader):
-            val_result = model(scans['image'].to(device))
+        for row in train_df.iterrows():
+            image = cv2.imread(row[1]['path'])
+            processed_image = transform(image=image)['image']
+            processed_image = processed_image.unsqueeze(0)
+            processed_image = processed_image.to(device)
+            boneage = torch.tensor(row[1]['boneage']).unsqueeze(0).unsqueeze(1).to(device)
+            gender = torch.tensor(row[1]['gender']).unsqueeze(0).unsqueeze(1).to(device)
+            scans = {
+                'image': processed_image,
+                'boneage': boneage,
+                'gender': gender
+            }
 
-            # Save input images with actual and predicted bone ages
-            for j in range(len(scans['image'])):
-                image = scans['image'][j]
-                actual_age = scans['boneage'][j]
-                predicted_age = val_result[j]
+            val_result = model(scans)
 
-                fig, ax = plt.subplots()
-                ax.imshow(image.permute(1, 2, 0))
-                ax.set_title(
-                    f"Actual Age: {actual_age.item()} months\nPredicted Age: {int(predicted_age.item())} months")
-                ax.axis('off')
+            if abs(boneage.item() - val_result.item()) < 25:
+                continue
+            basename = os.path.basename(row[1]['path']).split('.')[0]
+            fig, ax = plt.subplots()
+            ax.imshow(image)
+            ax.set_title(
+                f"Actual Age: {boneage.item()} months\nPredicted Age: {int(val_result.item())} months")
+            ax.text(0.5, -0.1, f"Image: {basename}", transform=ax.transAxes, ha='center')
 
-                # Save the figure to the PDF file
-                pdf.savefig(fig, bbox_inches='tight')
-                plt.close()
+            ax.axis('off')
+
+            # Save the figure to the PDF file
+            pdf.savefig(fig, bbox_inches='tight')
+            plt.close()
 
 
 if __name__ == "__main__":

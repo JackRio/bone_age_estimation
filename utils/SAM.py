@@ -70,8 +70,15 @@ class SAM_Segmentation:
     def generate_mask(self, image, margin=25):
         self.predictor.set_image(image)
         input_point = np.array(
-            [[image.shape[1] / 2, image.shape[0] / 2], [(image.shape[1] / 2) - 15, (image.shape[0] / 2) - 15],
-             [(image.shape[1] / 2) + 15, (image.shape[0] / 2) + 15]])
+            [
+                [
+                    image.shape[1] / 2, image.shape[0] / 2
+                ],
+                [
+                    (image.shape[1] / 2) - 15, (image.shape[0] / 2) - 15
+                ],
+            ]
+        )
         input_label = np.array([1, 1])
 
         masks, scores, logits = self.predictor.predict(
@@ -88,7 +95,16 @@ class SAM_Segmentation:
 if __name__ == "__main__":
     sam = SAM_Segmentation(sam_checkpoint="output/sam/sam_vit_h_4b8939.pth")
     images = glob.glob("data/rsna-bone-age/training/boneage-training-dataset/*.png")
-    for image in images:
+    preprocessed = glob.glob("data/rsna-bone-age/training/preprocessed/*.png")
+    discarded = glob.glob("data/rsna-bone-age/training/preprocessed_discarded/*.png")
+
+    preprocessed_id = [os.path.basename(image).split(".")[0] for image in preprocessed]
+    discarded_id = [os.path.basename(image).split(".")[0] for image in discarded]
+    combined_ids = preprocessed_id + discarded_id
+
+    for i, image in enumerate(images):
+        if os.path.basename(image).split(".")[0] in combined_ids:
+            continue
         base_name = os.path.basename(image)
         image = cv2.imread(image)
 

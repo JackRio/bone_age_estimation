@@ -1,20 +1,20 @@
+import json
 import os
 
 import albumentations as A
 import pandas as pd
 import pytorch_lightning as L
 import torch
-import json
 import wandb
 import yaml
 from albumentations.pytorch import ToTensorV2
 from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint
+from pytorch_lightning.loggers import WandbLogger
 from torch.utils.data import DataLoader
 
 from config import constants as C
 from dataloader import BoneAgeDataset
-from models.resnet import ResNet
-from pytorch_lightning.loggers import WandbLogger
+from models.model_zoo import BoneAgeEstModelZoo
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print("Using {} device".format(device))
@@ -40,6 +40,7 @@ def train_model(tc):
     bad_valid = BoneAgeDataset(annotations_file=valid_df, transform=transform)
     val_loader = DataLoader(bad_valid, batch_size=tc["batch_size"], shuffle=False, num_workers=0)
 
+    L.seed_everything(42)
     with open("data/wandb.json", "r") as f:
         wandb_config = json.load(f)
     wandb.login(key=wandb_config["wandb_api_key"], relogin=True)
@@ -56,34 +57,21 @@ def train_model(tc):
         logger=wandb_logger,
         callbacks=[
             ModelCheckpoint(
-                save_weights_only=True, mode="min", monitor="val_acc", every_n_epochs=5
+                save_weights_only=False, mode="min", monitor="val_loss", every_n_epochs=5, save_top_k=2
             ),
             LearningRateMonitor("epoch"),
         ],
     )
-
-    # Check whether pretrained model exists. If yes, load it and skip training
     pretrained_filename = os.path.join(tc["pretrained_filename"])
     if os.path.isfile(pretrained_filename):
         print(f"Found pretrained model at {pretrained_filename}, loading...")
         # Automatically loads the model with the saved hyperparameters
-        model = ResNet.load_from_checkpoint(pretrained_filename)
+        model = BoneAgeEstModelZoo.load_from_checkpoint(pretrained_filename)
     else:
-        L.seed_everything(44)  # To be reproducable
-
-        # TODO: Change this class name to load the appropriate model
-        model = ResNet(resent_version=tc["model_name"], pretrained=True, lr=tc['learning_rate'])
+        model = BoneAgeEstModelZoo(lr=tc["learning_rate"], architecture=tc["model_name"], branch=tc["branch"],
+                                   pretrained=tc["pretrained"])
     trainer.fit(model, train_loader, val_loader)
-    model = ResNet.load_from_checkpoint(
-        trainer.checkpoint_callback.best_model_path
-    )
-
-    val_result = trainer.test(model, dataloaders=val_loader, verbose=False)
-    result = {
-        "val": val_result[0]["test_acc"]
-    }
-
-    return model, result
+    return model, trainer
 
 
 if __name__ == "__main__":
