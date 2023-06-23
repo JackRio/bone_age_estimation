@@ -1,6 +1,6 @@
 # parameters
 precision: '16-mixed'
-run_name: "inceptionv3_preprocessed_half_data"
+run_name: "inception_gender_full"
 
 # Dataloader
 image_size: 512
@@ -10,9 +10,11 @@ valid_df: "data/rsna-bone-age/training/valid_preprocessed.csv"
 # Training parameters
 num_epochs: 50
 batch_size: 32
-learning_rate: 0.0005
+learning_rate: 0.0001
 
 # Model
-model_name: "inceptionv3"
+model_name: "inception_v3"
+branch: "gender"
+pretrained: True
 checkpoint_path: "output"
-pretrained_filename: "output/resnet50.ckpt"
+pretrained_filename: "output/inception.ckpt"

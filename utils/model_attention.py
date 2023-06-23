@@ -7,9 +7,9 @@ from matplotlib.backends.backend_pdf import PdfPages
 from pytorch_grad_cam import GradCAM
 from pytorch_grad_cam.utils.image import show_cam_on_image
 
-from models.resnet import ResNet
+from models.model_zoo import BoneAgeEstModelZoo
 
-resnet = ResNet.load_from_checkpoint('lightning_logs/mkmcrxik/checkpoints/epoch=14-step=4440.ckpt')
+resnet = BoneAgeEstModelZoo.load_from_checkpoint('lightning_logs/mkmcrxik/checkpoints/epoch=14-step=4440.ckpt')
 target_layers = [resnet.model.layer4[-1]]
 resnet.model.eval()
 

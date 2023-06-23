@@ -13,5 +13,5 @@ batch_size: 1
 learning_rate: 0.0005
 
 # Model
-pretrained_filename: "lightning_logs/uh51imae/checkpoints/epoch=19-step=2620.ckpt"
-pdf_filename: "output/resnet50_preprocessed_half.pdf"
+pretrained_filename: "lightning_logs/gne6asis/checkpoints/epoch=19-step=2620.ckpt"
+pdf_filename: "output/discarded.pdf"
