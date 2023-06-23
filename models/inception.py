@@ -27,33 +27,20 @@ class Inception(L.LightningModule):
         self.loss_module = F.l1_loss
         self.lr = lr
         self.model = models.inception_v3(pretrained=True)
+        self.model.fc = nn.Linear(self.model.fc.in_features, 16)
         self.model.aux_logits = False
 
-        self.gender_branch = nn.Sequential(
-            nn.Linear(1, 64),
-            nn.ReLU(inplace=True),
-            nn.Dropout(),
-            nn.Linear(64, 1000),
-            nn.ReLU(inplace=True),
-            nn.Dropout(),
-        )
-        self.classifier = nn.Sequential(
-            nn.Linear(2000, 1000),
-            nn.ReLU(),
-            nn.Linear(1000, 1)
-        )
+        self.medical = nn.Linear(17, 1)
 
     def forward(self, batch):
         x = self.model(batch['image'])
         gender = batch['gender'].to(torch.float32)
-        y = self.gender_branch(gender)
-        z = torch.cat((x, y), dim=1)
-        z = self.classifier(z)
-        return z
+        z = torch.concat([x, gender], dim=1)
+        return self.medical(z)
 
     def configure_optimizers(self):
         optimizer = optim.AdamW(self.parameters(), lr=self.hparams.lr)
-        lr_scheduler = optim.lr_scheduler.MultiStepLR(optimizer, milestones=[5, 10, 15], gamma=0.1, )
+        lr_scheduler = optim.lr_scheduler.MultiStepLR(optimizer, milestones=[10, 20, 35], gamma=0.1, )
         return [optimizer], [lr_scheduler]
 
     def training_step(self, batch, batch_idx):
@@ -90,14 +77,14 @@ def train_model(tc):
 
     bad_valid = BoneAgeDataset(annotations_file=valid_df, transform=transform)
     val_loader = DataLoader(bad_valid, batch_size=tc["batch_size"], shuffle=False, num_workers=0)
+
+    L.seed_everything(42)
     with open("data/wandb.json", "r") as f:
         wandb_config = json.load(f)
     wandb.login(key=wandb_config["wandb_api_key"], relogin=True)
     wandb.init(project=wandb_config["wandb_project"], entity=wandb_config["wandb_entity"], config=tc,
                name=tc["run_name"])
     wandb_logger = WandbLogger()
-
-    L.seed_everything(42)
 
     trainer = L.Trainer(
         default_root_dir=os.path.join(tc["checkpoint_path"], tc["model_name"]),  # Where to save models
@@ -108,7 +95,7 @@ def train_model(tc):
         logger=wandb_logger,
         callbacks=[
             ModelCheckpoint(
-                save_weights_only=True, mode="min", monitor="val_loss", every_n_epochs=5, save_top_k=2
+                save_weights_only=False, mode="min", monitor="val_loss", every_n_epochs=5, save_top_k=2
             ),
             LearningRateMonitor("epoch"),
         ],
@@ -119,7 +106,6 @@ def train_model(tc):
         # Automatically loads the model with the saved hyperparameters
         model = Inception.load_from_checkpoint(pretrained_filename)
     else:
-        L.seed_everything(42)
         model = Inception(lr=tc["learning_rate"])
     print(model)
     trainer.fit(model, train_loader, val_loader)
