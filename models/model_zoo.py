@@ -10,10 +10,11 @@ class BoneAgeEstModelZoo(L.LightningModule):
     ARCHITECTURE = {
         "inception_v3": models.inception_v3,
         "resnet50": models.resnet50,
+        "resnet101": models.resnet101,
         "resnet18": models.resnet18,
         "swin_b": models.swin_b,
     }
-    BRANCH = ["medical", "gender"]
+    BRANCH = ["medical", "gender", "swin_b"]
 
     def __init__(self, lr, architecture="inception_v3", branch="medical", pretrained=True):
         super().__init__()
@@ -29,10 +30,10 @@ class BoneAgeEstModelZoo(L.LightningModule):
             raise ValueError(f"Architecture must be one of {self.ARCHITECTURE}")
         self.model = self.ARCHITECTURE[self.hparams.architecture](pretrained=True)
 
-        if self.hparams.branch == "medical":
+        if self.hparams.branch == "medical" and self.hparams.architecture != "swin_b":
             self.medical = nn.Linear(17, 1)
             self.model.fc = nn.Linear(self.model.fc.in_features, 16)
-        elif self.hparams.branch == "gender":
+        elif self.hparams.branch == "gender" and self.hparams.architecture != "swin_b":
             self.model.fc = nn.Linear(self.model.fc.in_features, 1000)
             self.gender = nn.Linear(1, 32)
             self.classifier = nn.Sequential(
@@ -47,6 +48,9 @@ class BoneAgeEstModelZoo(L.LightningModule):
 
         if self.hparams.architecture == "inception_v3":
             self.model.aux_logits = False
+        elif self.hparams.architecture == "swin_b":
+            self.model.head = nn.Linear(self.model.head.in_features, 1)
+
 
     def forward(self, batch):
         x = self.model(batch['image'])
@@ -58,10 +62,13 @@ class BoneAgeEstModelZoo(L.LightningModule):
             y = self.gender(batch['gender'].to(torch.float32))
             z = torch.cat((x, y), dim=1)
             return self.classifier(z)
+        else:
+            x = self.model(batch['image'])
+            return x
 
     def configure_optimizers(self):
         optimizer = optim.AdamW(self.parameters(), lr=self.hparams.lr)
-        lr_scheduler = optim.lr_scheduler.MultiStepLR(optimizer, milestones=[5, 15, 25], gamma=0.1, )
+        lr_scheduler = optim.lr_scheduler.MultiStepLR(optimizer, milestones=[5, 10, 15, 20], gamma=0.1)
         return [optimizer], [lr_scheduler]
 
     def training_step(self, batch, batch_idx):

@@ -66,7 +66,8 @@ def train_model(tc):
     if os.path.isfile(pretrained_filename):
         print(f"Found pretrained model at {pretrained_filename}, loading...")
         # Automatically loads the model with the saved hyperparameters
-        model = BoneAgeEstModelZoo.load_from_checkpoint(pretrained_filename)
+        model = BoneAgeEstModelZoo(lr=tc["learning_rate"], architecture=tc["model_name"], branch=tc["branch"],
+                                   pretrained=tc["pretrained"])
     else:
         model = BoneAgeEstModelZoo(lr=tc["learning_rate"], architecture=tc["model_name"], branch=tc["branch"],
                                    pretrained=tc["pretrained"])

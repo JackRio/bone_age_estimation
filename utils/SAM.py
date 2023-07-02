@@ -1,8 +1,11 @@
 import glob
 import os
 
+import matplotlib.pyplot as plt
+import pydicom
 import cv2
 import numpy as np
+import pandas as pd
 import torch
 from segment_anything import sam_model_registry, SamPredictor
 
@@ -60,56 +63,97 @@ class SAM_Segmentation:
         best_mask = masks[max_index]
         return best_mask
 
+    def manual_selection(self, masks):
+        fig, axs = plt.subplots(1, 2, figsize=(10, 5))
+
+        axs[0].imshow(masks[0], cmap='Reds')
+        axs[1].imshow(masks[1], cmap='Oranges')
+        plt.tight_layout()
+        plt.show()
+
+        answer = input()
+        return int(answer)
+
     @staticmethod
     def fill_mask(mask):
         # Fill the holes in the mask
         mask = mask.astype(np.uint8)
-        filled_mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, np.ones((10, 10), np.uint8))
+        filled_mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, np.ones((15, 15), np.uint8))
         return filled_mask
+
+    def get_largest_component(self, image):
+        # Find connected components
+        num_labels, labels, stats, _ = cv2.connectedComponentsWithStats(image, connectivity=8)
+
+        # Find the largest component excluding the background (label 0)
+        largest_label = np.argmax(stats[1:, cv2.CC_STAT_AREA]) + 1
+
+        # Create a mask for the largest component
+        largest_component_mask = np.uint8(labels == largest_label) * 1
+
+        return largest_component_mask
 
     def generate_mask(self, image, margin=25):
         self.predictor.set_image(image)
         input_point = np.array(
             [
                 [
-                    image.shape[1] / 2, image.shape[0] / 2
+                    image.shape[1] / 2, (image.shape[0] / 2)
                 ],
                 [
-                    (image.shape[1] / 2) - 15, (image.shape[0] / 2) - 15
+                    image.shape[1] / 2, (image.shape[0] / 2) + 150
                 ],
+                [
+                    (image.shape[1] / 2) + 150, (image.shape[0] / 2)
+                ]
             ]
         )
-        input_label = np.array([1, 1])
+        input_label = np.array([1] * len(input_point))
 
         masks, scores, logits = self.predictor.predict(
             point_coords=input_point,
             point_labels=input_label,
             multimask_output=True,
         )
-        best_mask = self.pick_best_mask(masks, scores)
-        fill_mask = self.fill_mask(best_mask)
-        cropped_image = self.crop_image_to_foreground(image, fill_mask, margin)
-        return cropped_image, best_mask, fill_mask
+        # best_mask = self.pick_best_mask(masks, scores)
+        best_mask_indx = self.manual_selection(masks[1:])
+        if best_mask_indx == 3:
+            return None
+        fill_mask = self.fill_mask(masks[best_mask_indx])
+        largest_connected_component = self.get_largest_component(fill_mask)
+        cropped_image = self.crop_image_to_foreground(image, largest_connected_component, margin)
+        return cropped_image
 
 
 if __name__ == "__main__":
-    sam = SAM_Segmentation(sam_checkpoint="output/sam/sam_vit_h_4b8939.pth")
-    images = glob.glob("data/rsna-bone-age/training/boneage-training-dataset/*.png")
-    preprocessed = glob.glob("data/rsna-bone-age/training/preprocessed/*.png")
-    discarded = glob.glob("data/rsna-bone-age/training/preprocessed_discarded/*.png")
-
-    preprocessed_id = [os.path.basename(image).split(".")[0] for image in preprocessed]
-    discarded_id = [os.path.basename(image).split(".")[0] for image in discarded]
-    combined_ids = preprocessed_id + discarded_id
-
-    for i, image in enumerate(images):
-        if os.path.basename(image).split(".")[0] in combined_ids:
+    # sam = SAM_Segmentation(sam_checkpoint="output/sam/sam_vit_h_4b8939.pth")
+    mexico_raw = pd.read_csv("data/Mexico_private_dataset/mexico_raw_dataset.csv")
+    os.makedirs("data/Mexico_private_dataset/reiterate/", exist_ok=True)
+    for folder in mexico_raw.iterrows():
+        image_path = os.path.join("data/Mexico_private_dataset/preprocessed", str(folder[1]["id"]) + ".png")
+        image_id = folder[1]["id"]
+        if os.path.exists(os.path.join("data/Mexico_private_dataset/reiterate", str(image_id) + ".png")):
             continue
-        base_name = os.path.basename(image)
-        image = cv2.imread(image)
+        if os.path.exists(image_path):
+            image = cv2.imread(image_path)
+        else:
+            continue
+        # dicom_image = pydicom.dcmread(image_path)
+        # dicom_array = dicom_image.pixel_array
+        # normalized_array = ((dicom_array - np.min(dicom_array)) / (
+        #         np.max(dicom_array) - np.min(dicom_array))) * 255
+        # # Convert the grayscale array to a 3-channel RGB image
+        # rgb_image = cv2.cvtColor(normalized_array.astype(np.uint8), cv2.COLOR_GRAY2RGB)
 
-        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        final_image, best_mask, fill_mask = sam.generate_mask(image)
+        # final_image = sam.generate_mask(rgb_image)
+        plt.imshow(image, cmap="gray")
+        plt.show()
+        flip = int(input())
+        if flip == 1:
+            final_image = cv2.flip(image, 1)
+        else:
+            final_image = image
+        if final_image is None:
+            continue
         # save the cropped image
-        os.makedirs("data/rsna-bone-age/training/preprocessed/", exist_ok=True)
-        cv2.imwrite(f"data/rsna-bone-age/training/preprocessed/{base_name}", final_image)
+        cv2.imwrite(f"data/Mexico_private_dataset/reiterate/{image_id}.png", final_image)

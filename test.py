@@ -3,6 +3,7 @@ import os
 import albumentations as A
 import cv2
 import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
 import torch
 import yaml
@@ -19,18 +20,20 @@ print("Using {} device".format(device))
 def test_model(tc):
     transform = A.Compose([
         A.Resize(width=tc['image_size'], height=tc['image_size']),
+        A.CLAHE(),
         A.Normalize(),
         ToTensorV2(),
     ])
 
-    train_df = pd.read_csv(tc['train_df'])
+    train_df = pd.read_csv(tc['test_df'])
 
     # Check whether pretrained model exists. If yes, load it and skip training
-    pretrained_filename = os.path.join(tc["pretrained_filename"])
+    pretrained_filename = tc["pretrained_filename"]
     if os.path.isfile(pretrained_filename):
         print(f"Found pretrained model at {pretrained_filename}, loading...")
         # Automatically loads the model with the saved hyperparameters
-        model = BoneAgeEstModelZoo.load_from_checkpoint(pretrained_filename)
+        model = BoneAgeEstModelZoo(branch="gender", pretrained=False, lr=0.001).load_from_checkpoint(
+            pretrained_filename)
         model.model.eval()
     else:
         print("No pretrained model found for testing")
@@ -38,6 +41,7 @@ def test_model(tc):
 
     # Create a PDF file
     with PdfPages(tc['pdf_filename']) as pdf:
+        mean_error = []
         for row in train_df.iterrows():
             image = cv2.imread(row[1]['path'])
             processed_image = transform(image=image)['image']
@@ -53,8 +57,6 @@ def test_model(tc):
 
             val_result = model(scans)
 
-            if abs(boneage.item() - val_result.item()) < 25:
-                continue
             basename = os.path.basename(row[1]['path']).split('.')[0]
             fig, ax = plt.subplots()
             ax.imshow(image)
@@ -63,11 +65,11 @@ def test_model(tc):
             ax.text(0.5, -0.1, f"Image: {basename}", transform=ax.transAxes, ha='center')
 
             ax.axis('off')
-
+            mean_error.append(abs(boneage.item() - val_result.item()))
             # Save the figure to the PDF file
             pdf.savefig(fig, bbox_inches='tight')
             plt.close()
-
+    print("Mean error: ", np.mean(mean_error))
 
 if __name__ == "__main__":
     # Load config file for training

@@ -3,15 +3,16 @@ precision: '16-mixed'
 run_name: "resnet50_preprocessed_half_data"
 
 # Dataloader
-image_size: 512
+image_size: 1024
 train_df: "data/rsna-bone-age/training/train_preprocessed.csv"
 valid_df: "data/rsna-bone-age/training/valid_preprocessed.csv"
+test_df: "data/Mexico_private_dataset/mexico_preprocessed_dataset.csv"
 
 # Training parameters
 num_epochs: 50
 batch_size: 1
-learning_rate: 0.0005
+learning_rate: 0.0001
 
 # Model
-pretrained_filename: "lightning_logs/gne6asis/checkpoints/epoch=19-step=2620.ckpt"
-pdf_filename: "output/discarded.pdf"
+pretrained_filename: "output/epoch14_inception_1024_kaggle.ckpt"
+pdf_filename: "output/incep_1024_kagg_mexi_left_hand.pdf"
