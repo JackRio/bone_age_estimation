@@ -126,34 +126,32 @@ class SAM_Segmentation:
 
 
 if __name__ == "__main__":
-    # sam = SAM_Segmentation(sam_checkpoint="output/sam/sam_vit_h_4b8939.pth")
-    mexico_raw = pd.read_csv("data/Mexico_private_dataset/mexico_raw_dataset.csv")
-    os.makedirs("data/Mexico_private_dataset/reiterate/", exist_ok=True)
-    for folder in mexico_raw.iterrows():
-        image_path = os.path.join("data/Mexico_private_dataset/preprocessed", str(folder[1]["id"]) + ".png")
+    dicom = True
+    sam = SAM_Segmentation(sam_checkpoint="output/sam/sam_vit_h_4b8939.pth")
+    rsna_raw = pd.read_csv("data/Mexico_private_dataset/mexico_additional_data.csv")
+    # validation_images = glob.glob("data/rsna-bone-age/validation/boneage-validation-dataset-1/*")
+    final_path = "data/Mexico_private_dataset/additional/"
+    os.makedirs(final_path, exist_ok=True)
+    for folder in rsna_raw.iterrows():
+        image_path = folder[1]["path"]
         image_id = folder[1]["id"]
-        if os.path.exists(os.path.join("data/Mexico_private_dataset/reiterate", str(image_id) + ".png")):
+        if os.path.exists(f"data/Mexico_private_dataset/additional/{image_id}.png"):
             continue
-        if os.path.exists(image_path):
-            image = cv2.imread(image_path)
-        else:
-            continue
-        # dicom_image = pydicom.dcmread(image_path)
-        # dicom_array = dicom_image.pixel_array
-        # normalized_array = ((dicom_array - np.min(dicom_array)) / (
-        #         np.max(dicom_array) - np.min(dicom_array))) * 255
-        # # Convert the grayscale array to a 3-channel RGB image
-        # rgb_image = cv2.cvtColor(normalized_array.astype(np.uint8), cv2.COLOR_GRAY2RGB)
 
-        # final_image = sam.generate_mask(rgb_image)
-        plt.imshow(image, cmap="gray")
-        plt.show()
-        flip = int(input())
-        if flip == 1:
-            final_image = cv2.flip(image, 1)
+        # read dicom image and convert to single channel
+        if dicom:
+            image = pydicom.dcmread(image_path).pixel_array
+            # image to 255
+            image = (image / np.max(image)) * 255
+            rgb_image = cv2.cvtColor(image.astype(np.uint8), cv2.COLOR_GRAY2RGB)
+
         else:
-            final_image = image
+            image = cv2.imread(image_path)
+            rgb_image = image
+
+        final_image = sam.generate_mask(rgb_image)
         if final_image is None:
             continue
+
         # save the cropped image
-        cv2.imwrite(f"data/Mexico_private_dataset/reiterate/{image_id}.png", final_image)
+        cv2.imwrite(f"data/Mexico_private_dataset/additional/{image_id}.png", final_image)
