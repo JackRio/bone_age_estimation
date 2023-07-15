@@ -53,20 +53,22 @@ def train_model(tc):
         precision=tc["precision"],
         accelerator="auto",
         devices=1,
+        log_every_n_steps=4,
         max_epochs=tc["num_epochs"],
         logger=wandb_logger,
         callbacks=[
             ModelCheckpoint(
-                save_weights_only=False, mode="min", monitor="val_loss", every_n_epochs=5, save_top_k=2
+                save_weights_only=False, mode="min", monitor="val_loss", save_top_k=2
             ),
             LearningRateMonitor("epoch"),
         ],
     )
-    pretrained_filename = os.path.join(tc["pretrained_filename"])
+    pretrained_filename = tc["pretrained_filename"]
     if os.path.isfile(pretrained_filename):
         print(f"Found pretrained model at {pretrained_filename}, loading...")
         # Automatically loads the model with the saved hyperparameters
-        model = BoneAgeEstModelZoo.load_from_checkpoint(pretrained_filename)
+        model = BoneAgeEstModelZoo(lr=tc["learning_rate"], architecture=tc["model_name"], branch=tc["branch"],
+                                   pretrained=tc["pretrained"])
     else:
         model = BoneAgeEstModelZoo(lr=tc["learning_rate"], architecture=tc["model_name"], branch=tc["branch"],
                                    pretrained=tc["pretrained"])

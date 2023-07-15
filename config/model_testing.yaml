@@ -1,17 +1,21 @@
-# parameters
-precision: '16-mixed'
-run_name: "resnet50_preprocessed_half_data"
 
 # Dataloader
-image_size: 512
+image_size: 1024
 train_df: "data/rsna-bone-age/training/train_preprocessed.csv"
-valid_df: "data/rsna-bone-age/training/valid_preprocessed.csv"
+valid_df: "data/Mexico_private_dataset/valid_preprocessed.csv"
+test_df: "data/Mexico_private_dataset/mexico_preprocessed_additional.csv"
 
 # Training parameters
 num_epochs: 50
 batch_size: 1
-learning_rate: 0.0005
+learning_rate: 0.0001
 
 # Model
-pretrained_filename: "lightning_logs/gne6asis/checkpoints/epoch=19-step=2620.ckpt"
-pdf_filename: "output/discarded.pdf"
+pretrained_filename: "lightning_logs/eco3q9yb/checkpoints/epoch=22-step=897.ckpt"
+pdf_filename: "output/inception_finetuned/additional_mexico_valid.pdf"
+
+
+## Folds
+#fold_1: "lightning_logs/private_finetune_fold_1/checkpoints/epoch=24-step=850.ckpt"
+#fold_2: "lightning_logs/private_finetune_fold_2/checkpoints/epoch=14-step=525.ckpt"
+#fold_3: "lightning_logs/private_finetune_fold_3/checkpoints/epoch=12-step=455.ckpt"

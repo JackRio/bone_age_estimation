@@ -3,11 +3,13 @@ import os
 import albumentations as A
 import cv2
 import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
 import torch
 import yaml
 from albumentations.pytorch import ToTensorV2
 from matplotlib.backends.backend_pdf import PdfPages
+from tqdm import tqdm
 
 from config import constants as C
 from models.model_zoo import BoneAgeEstModelZoo
@@ -16,29 +18,35 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print("Using {} device".format(device))
 
 
-def test_model(tc):
-    transform = A.Compose([
-        A.Resize(width=tc['image_size'], height=tc['image_size']),
-        A.Normalize(),
-        ToTensorV2(),
-    ])
-
-    train_df = pd.read_csv(tc['train_df'])
-
-    # Check whether pretrained model exists. If yes, load it and skip training
-    pretrained_filename = os.path.join(tc["pretrained_filename"])
+def load_model(fold_path):
+    pretrained_filename = fold_path
     if os.path.isfile(pretrained_filename):
-        print(f"Found pretrained model at {pretrained_filename}, loading...")
-        # Automatically loads the model with the saved hyperparameters
-        model = BoneAgeEstModelZoo.load_from_checkpoint(pretrained_filename)
+        model = BoneAgeEstModelZoo(branch="gender", pretrained=True, lr=0.001).load_from_checkpoint(
+            pretrained_filename)
         model.model.eval()
+        model.classifier.eval()
+        model.gender.eval()
+        model.eval()
+        return model
     else:
         print("No pretrained model found for testing")
         return
 
+
+def test_model(tc):
+    transform = A.Compose([
+        A.Resize(width=tc['image_size'], height=tc['image_size']),
+        A.CLAHE(),
+        A.Normalize(),
+        ToTensorV2(),
+    ])
+
+    train_df = pd.read_csv(tc['valid_df'])
+    model = load_model(tc['pretrained_filename'])
     # Create a PDF file
     with PdfPages(tc['pdf_filename']) as pdf:
-        for row in train_df.iterrows():
+        mean_error = []
+        for row in tqdm(train_df.iterrows()):
             image = cv2.imread(row[1]['path'])
             processed_image = transform(image=image)['image']
             processed_image = processed_image.unsqueeze(0)
@@ -53,8 +61,6 @@ def test_model(tc):
 
             val_result = model(scans)
 
-            if abs(boneage.item() - val_result.item()) < 25:
-                continue
             basename = os.path.basename(row[1]['path']).split('.')[0]
             fig, ax = plt.subplots()
             ax.imshow(image)
@@ -63,10 +69,11 @@ def test_model(tc):
             ax.text(0.5, -0.1, f"Image: {basename}", transform=ax.transAxes, ha='center')
 
             ax.axis('off')
-
+            mean_error.append(abs(boneage.item() - val_result.item()))
             # Save the figure to the PDF file
             pdf.savefig(fig, bbox_inches='tight')
             plt.close()
+    print("Mean error: ", np.mean(mean_error))
 
 
 if __name__ == "__main__":
