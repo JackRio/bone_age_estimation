@@ -2,6 +2,7 @@ import pytorch_lightning as L
 import torch
 import torch.nn.functional as F
 import torch.optim as optim
+import wandb
 from torch import nn
 from torchvision import models
 
@@ -16,7 +17,7 @@ class BoneAgeEstModelZoo(L.LightningModule):
     }
     BRANCH = ["medical", "gender", "swin_b"]
 
-    def __init__(self, lr, architecture="inception_v3", branch="medical", pretrained=True):
+    def __init__(self, lr, architecture="inception_v3", branch="gender", pretrained=True):
         super().__init__()
         self.save_hyperparameters()
         self.loss_module = F.l1_loss
@@ -51,7 +52,6 @@ class BoneAgeEstModelZoo(L.LightningModule):
         elif self.hparams.architecture == "swin_b":
             self.model.head = nn.Linear(self.model.head.in_features, 1)
 
-
     def forward(self, batch):
         x = self.model(batch['image'])
         if self.hparams.branch == "medical":
@@ -84,3 +84,6 @@ class BoneAgeEstModelZoo(L.LightningModule):
         with torch.no_grad():
             loss = self.loss_module(preds, batch['boneage'])
         self.log("val_loss", loss, prog_bar=True)
+
+    def on_validation_end(self):
+        wandb.log({"val_loss_mean": self.trainer.callback_metrics["val_loss"].mean()})
