@@ -1,0 +1,8 @@
+flask
+flask-cors
+gunicorn
+numpy
+albumentations
+wandb
+pytorch-lightning
+gradio
