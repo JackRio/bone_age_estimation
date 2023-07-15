@@ -1,20 +1,20 @@
 # parameters
 precision: '16-mixed'
-run_name: "resnet101_preprocessed_450_lr0001"
+run_name: "inception_new_fintuning"
 
 # Dataloader
-image_size: 450
-train_df: "data/rsna-bone-age/training/train_preprocessed.csv"
-valid_df: "data/rsna-bone-age/training/valid_preprocessed.csv"
+image_size: 1024
+train_df: "data/Mexico_private_dataset/train_preprocessed.csv"
+valid_df: "data/Mexico_private_dataset/valid_preprocessed.csv"
 
 # Training parameters
 num_epochs: 50
-batch_size: 16
+batch_size: 8
 learning_rate: 0.0001
 
 # Model
-model_name: "resnet101"
+model_name: "inception_v3"
 branch: "gender"
 pretrained: True
-checkpoint_path: "output"
-pretrained_filename: ""
+checkpoint_path: "output/inception_1024/"
+pretrained_filename: "output/inception_1024_new_data/epoch=13-step=9828.ckpt"
