@@ -24,15 +24,16 @@ It is important to note that this project is solely for research purposes and wi
 1. The RSNA dataset is first passed through [Segment Anything Model (SAM)](https://github.com/facebookresearch/segment-anything)
 2. The output of SAM is then filtered based on the score of the segmentation mask and the weighted quantity of voxels
 3. The best mask is then post-processed with morphological closing to fill any small holes in the mask
-4. The final mask is then used to remove background pixels from the X-ray scans
-5. The image is then cropped to the nearest foreground pixel
-6. Manual filtering is done to remove any bad images or failed images
+4. The mask is then checked to see if vertical flip is required and cropped to remove the forearm in some cases 
+5. The final mask is then used to remove background pixels from the X-ray scans
+6. The image is then cropped to the nearest foreground pixel
+7. Manual filtering is done to remove any bad images or failed images
 
 ### Training
 1. The model is trained on the RSNA dataset
 2. Pretrained weights from the ImageNet dataset are used to initialize the model
 3. ResNet-50 is used as the baseline model
-4. ....Steps incoming....
+4. InceptionV3 model was trained by referencing the model architecture from the RSNA [paper](https://pubs.rsna.org/doi/full/10.1148/radiol.2018180736) first place solution by [Alexander Bilbily](https://medical-imaging.utoronto.ca/faculty/alexander-bilbily)
 5. The final model will be fintuned and evaluated on the private dataset
 
 ### Evaluation
