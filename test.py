@@ -1,5 +1,5 @@
 import os
-
+import pickle
 import albumentations as A
 import cv2
 import matplotlib.pyplot as plt
@@ -41,7 +41,11 @@ def test_model(tc):
         ToTensorV2(),
     ])
 
-    train_df = pd.read_csv(tc['valid_df'])
+    if tc['splits_training']:
+        with open(tc["splits_pickle"], "rb") as f:
+            splits = pickle.load(f)
+        complete_df = pd.read_csv(tc["splits_df"])
+        train_df = complete_df.iloc[splits[tc["splits_number"]]["val"]]
     model = load_model(tc['pretrained_filename'])
     # Create a PDF file
     with PdfPages(tc['pdf_filename']) as pdf:

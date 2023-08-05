@@ -100,12 +100,12 @@ class SAM_Segmentation:
                 [
                     image.shape[1] / 2, (image.shape[0] / 2)
                 ],
-                [
-                    image.shape[1] / 2, (image.shape[0] / 2) + 150
-                ],
-                [
-                    (image.shape[1] / 2) + 150, (image.shape[0] / 2)
-                ]
+                # [
+                #     image.shape[1] / 2, (image.shape[0] / 2) + 150
+                # ],
+                # [
+                #     (image.shape[1] / 2) + 150, (image.shape[0] / 2)
+                # ]
             ]
         )
         input_label = np.array([1] * len(input_point))
@@ -124,19 +124,24 @@ class SAM_Segmentation:
         cropped_image = self.crop_image_to_foreground(image, largest_connected_component, margin)
         return cropped_image
 
-
 if __name__ == "__main__":
     dicom = True
     sam = SAM_Segmentation(sam_checkpoint="output/sam/sam_vit_h_4b8939.pth")
-    rsna_raw = pd.read_csv("data/Mexico_private_dataset/mexico_additional_data.csv")
+    rsna_raw = pd.read_csv("data/Mexico_private_dataset/Testing/mexico_test_raw.csv")
     # validation_images = glob.glob("data/rsna-bone-age/validation/boneage-validation-dataset-1/*")
-    final_path = "data/Mexico_private_dataset/additional/"
+    final_path = "data/Mexico_private_dataset/examples/"
     os.makedirs(final_path, exist_ok=True)
     for folder in rsna_raw.iterrows():
-        image_path = folder[1]["path"]
         image_id = folder[1]["id"]
-        if os.path.exists(f"data/Mexico_private_dataset/additional/{image_id}.png"):
+        image_path = "data/Mexico_private_dataset/Testing/2022/" + str(folder[1]["id"])
+        image_path = glob.glob(image_path + "/*.dcm")
+        if len(image_path) == 0:
+            print(image_id)
             continue
+        else:
+            image_path = image_path[0]
+        # if os.path.exists(f"data/Mexico_private_dataset/final_test/{image_id}.png"):
+        #     continue
 
         # read dicom image and convert to single channel
         if dicom:
@@ -154,4 +159,4 @@ if __name__ == "__main__":
             continue
 
         # save the cropped image
-        cv2.imwrite(f"data/Mexico_private_dataset/additional/{image_id}.png", final_image)
+        cv2.imwrite(f"data/Mexico_private_dataset/examples/{image_id}.png", final_image)

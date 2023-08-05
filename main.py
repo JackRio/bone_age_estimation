@@ -1,5 +1,6 @@
 import json
 import os
+import pickle
 
 import albumentations as A
 import pandas as pd
@@ -23,16 +24,19 @@ print("Using {} device".format(device))
 def train_model(tc):
     transform = A.Compose([
         A.Resize(width=tc['image_size'], height=tc['image_size']),
-        A.Flip(p=0.5),
-        A.VerticalFlip(p=0.5),
-        A.Rotate(limit=20, p=0.5),
-        A.RandomBrightnessContrast(p=0.5),
         A.CLAHE(),
         A.Normalize(),
         ToTensorV2(),
     ])
-    raw_train_df = pd.read_csv(tc["train_df"])
-    valid_df = pd.read_csv(tc["valid_df"])
+    if tc['splits_training']:
+        with open(tc["splits_pickle"], "rb") as f:
+            splits = pickle.load(f)
+        complete_df = pd.read_csv(tc["splits_df"])
+        raw_train_df = complete_df.iloc[splits[tc["splits_number"]]["train"]]
+        valid_df = complete_df.iloc[splits[tc["splits_number"]]["val"]]
+    else:
+        raw_train_df = pd.read_csv(tc["train_df"])
+        valid_df = pd.read_csv(tc["valid_df"])
 
     bad_train = BoneAgeDataset(annotations_file=raw_train_df, transform=transform)
     train_loader = DataLoader(bad_train, batch_size=tc["batch_size"], shuffle=True, num_workers=0)

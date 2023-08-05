@@ -1,8 +1,8 @@
 
 # Dataloader
-image_size: 1024
+image_size: 512
 train_df: "data/rsna-bone-age/training/train_preprocessed.csv"
-valid_df: "data/Mexico_private_dataset/valid_preprocessed.csv"
+valid_df: "data/rsna-bone-age/validation/test_df.csv"
 test_df: "data/Mexico_private_dataset/mexico_preprocessed_additional.csv"
 
 # Training parameters
@@ -11,11 +11,12 @@ batch_size: 1
 learning_rate: 0.0001
 
 # Model
-pretrained_filename: "lightning_logs/eco3q9yb/checkpoints/epoch=22-step=897.ckpt"
-pdf_filename: "output/inception_finetuned/additional_mexico_valid.pdf"
+pretrained_filename: "lightning_logs/uvgog0bh/checkpoints/epoch=47-step=1248.ckpt"
+pdf_filename: "output/inception_512_finetuned/splits_2_10_mexico.pdf"
 
 
 ## Folds
-#fold_1: "lightning_logs/private_finetune_fold_1/checkpoints/epoch=24-step=850.ckpt"
-#fold_2: "lightning_logs/private_finetune_fold_2/checkpoints/epoch=14-step=525.ckpt"
-#fold_3: "lightning_logs/private_finetune_fold_3/checkpoints/epoch=12-step=455.ckpt"
+splits_number: 2
+splits_training: True
+splits_pickle: "data/Mexico_private_dataset/splits_10.pkl"
+splits_df: "data/Mexico_private_dataset/mexico_complete_dataset.csv"

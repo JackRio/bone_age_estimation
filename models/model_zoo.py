@@ -52,6 +52,9 @@ class BoneAgeEstModelZoo(L.LightningModule):
         elif self.hparams.architecture == "swin_b":
             self.model.head = nn.Linear(self.model.head.in_features, 1)
 
+        # for param in self.model.parameters():
+        #     param.requires_grad = False
+
     def forward(self, batch):
         x = self.model(batch['image'])
         if self.hparams.branch == "medical":
@@ -68,7 +71,7 @@ class BoneAgeEstModelZoo(L.LightningModule):
 
     def configure_optimizers(self):
         optimizer = optim.AdamW(self.parameters(), lr=self.hparams.lr)
-        lr_scheduler = optim.lr_scheduler.MultiStepLR(optimizer, milestones=[5, 10, 15, 20], gamma=0.1)
+        lr_scheduler = optim.lr_scheduler.MultiStepLR(optimizer, milestones=[10, 15, 25, 35, 45], gamma=0.1)
         return [optimizer], [lr_scheduler]
 
     def training_step(self, batch, batch_idx):
